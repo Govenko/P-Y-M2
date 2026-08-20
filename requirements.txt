@@ -1,0 +1,6 @@
+# Зависимости для Yandex Maps Parser с обходом лимитов через рубрикатор
+
+playwright>=1.40.0
+playwright-stealth>=1.0.6
+loguru>=0.7.2
+python-dotenv>=1.0.0
