@@ -1,1 +1,620 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yandex CRM PRO | Dashboard</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #f59e0b; --primary-light: #fbbf24;
+            --bg-dark: #020617; --bg-card: #0f172a;
+            --sidebar: #1e293b; --text-muted: #94a3b8;
+            --text-main: #f8fafc; --accent: #38bdf8;
+            --danger: #ef4444; --success: #22c55e;
+            --tg: #229ED9;
+            --glass: rgba(15, 23, 42, 0.8);
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        aside { width: 280px; background: var(--sidebar); border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; z-index: 50; }
+        .brand { padding: 2rem; display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; color: var(--primary); }
+        .nav-menu { flex: 1; padding: 1rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 1rem; border-radius: 12px; cursor: pointer; color: var(--text-muted); transition: 0.3s; margin-bottom: 5px; font-weight: 500; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: var(--primary); color: black; }
+        .nav-item i { width: 20px; height: 20px; }
+
+        .session-info { padding: 1rem; margin: 1rem; background: rgba(0,0,0,0.2); border-radius: 12px; font-size: 0.8rem; }
+        .session-info select { width: 100%; margin-top: 8px; background: #020617; color: white; border: 1px solid rgba(255,255,255,0.1); padding: 5px; border-radius: 6px; }
+
+        /* --- MAIN CONTENT --- */
+        main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+        .top-bar { height: 70px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; background: var(--bg-dark); position: sticky; top: 0; z-index: 40; }
+        .view-content { padding: 2rem; display: none; animation: fadeIn 0.4s ease-out; }
+        .view-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DASHBOARD CARDS --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .stat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        .stat-n { font-size: 2.2rem; font-weight: 800; margin-bottom: 5px; }
+        .stat-l { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
+
+        /* --- FORMS --- */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .field { margin-bottom: 1.5rem; }
+        .field-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; }
+        input, textarea, select { width: 100%; background: #020617; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1rem; color: white; font-size: 0.95rem; transition: 0.3s; }
+        option { background: #1e293b; color: white; }
+        input:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1); }
+        
+        .btn-main { background: var(--primary); color: black; border: none; padding: 1.2rem 2.5rem; border-radius: 16px; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; font-size: 1rem; }
+        .btn-main:hover { transform: scale(1.02); filter: brightness(1.1); }
+
+        /* --- TABLE --- */
+        .table-area { 
+            border-radius: 20px; 
+            background: var(--bg-card); 
+            border: 1px solid rgba(255,255,255,0.05);
+            max-height: 80vh; /* Ограничиваем высоту для скролла */
+            overflow: auto; /* Включаем прокрутку именно тут */
+            position: relative;
+        }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { 
+            padding: 1.2rem 1rem; 
+            text-align: left; 
+            background: #1e293b; /* Нужен непрозрачный фон для sticky */
+            color: var(--primary); 
+            font-size: 0.7rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em;
+            position: sticky; 
+            top: 0; 
+            z-index: 10;
+        }
+        td { padding: 1.2rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.9rem; vertical-align: middle; }
+        tr:hover { background: rgba(255,255,255,0.01); }
+
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; border: 1px solid transparent; }
+        .tag-rating { background: rgba(34, 197, 94, 0.1); color: var(--success); border-color: rgba(34,197,94,0.2); }
+        .tag-social { display: inline-flex; align-items: center; gap: 5px; margin-right: 5px; text-decoration: none; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.7rem; color: white; }
+
+        .social-links { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .social-icon { padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; color: white; text-decoration: none; }
+        .si-vk { background: #0077FF; }
+        .si-tg { background: var(--tg); }
+        .si-wa { background: #25D366; }
+
+        /* --- TERMINAL --- */
+        .term-box { background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; height: 500px; overflow-y: auto; color: #cbd5e1; }
+        .term-line { margin-bottom: 6px; border-left: 2px solid transparent; padding-left: 10px; }
+        .term-line.info { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); padding: 5px 10px; }
+        .term-line.success { border-color: var(--success); color: var(--success); }
+
+        .suggest-pop { position: absolute; background: #1e293b; border: 1px solid var(--primary); border-radius: 8px; z-index: 1000; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .s-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        .s-item:hover { background: var(--primary); color: black; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="brand">
+            <i data-lucide="compass"></i> MAPS PRO CRM
+        </div>
+        
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="showView('v-dash', this)">
+                <i data-lucide="layout-dashboard"></i> Дашборд
+            </div>
+            <div class="nav-item" onclick="showView('v-scrape', this)">
+                <i data-lucide="rocket"></i> Запуск сбора
+            </div>
+            <div class="nav-item" onclick="showView('v-table', this)">
+                <i data-lucide="database"></i> База лидов
+            </div>
+            <div class="nav-item" onclick="showView('v-logs', this)">
+                <i data-lucide="terminal"></i> Лог-терминал
+            </div>
+        </div>
+
+        <div style="padding:1rem; border-top:1px solid rgba(255,255,255,0.05); margin-top:auto">
+            <div class="nav-item" style="color:var(--danger)" onclick="clearAllData()">
+                <i data-lucide="trash-2"></i> Очистить всё
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN ARTICLE -->
+    <main>
+        <div class="top-bar">
+            <div style="font-weight:600; font-size:0.9rem; color:var(--text-muted)">
+                <span id="currentStatusText">Система готова к работе</span>
+            </div>
+            
+            <div id="speedControl" style="display:none; align-items:center; gap:10px;">
+                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted)">СКОРОСТЬ ПАРСЕРА:</label>
+                <input type="range" id="realtimeSpeed" min="0.2" max="8" step="0.2" value="1" oninput="updateRealtimeSpeed()" style="width:100px; padding:0; height:4px; cursor:pointer">
+                <span id="speedVal" style="font-weight:800; color:var(--primary); font-size:0.8rem; width:30px">1.0x</span>
+
+                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-left:15px">ШАГ СКРОЛЛА:</label>
+                <input type="range" id="scrollSpeed" min="300" max="3000" step="100" value="900" oninput="updateScrollSpeed()" style="width:100px; padding:0; height:4px; cursor:pointer">
+                <span id="scrollVal" style="font-weight:800; color:var(--primary); font-size:0.8rem; width:45px">900px</span>
+
+                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); margin-left:15px">СКОРОСТЬ КАРТЫ:</label>
+                <input type="range" id="mapSpeed" min="1" max="10" step="0.5" value="1" oninput="updateMapSpeed()" style="width:100px; padding:0; height:4px; cursor:pointer">
+                <span id="mapSpeedVal" style="font-weight:800; color:var(--primary); font-size:0.8rem; width:35px">1.0x</span>
+            </div>
+
+            <div style="display:flex; gap:1.5rem; align-items:center">
+                <div style="display:flex; align-items:center; gap:8px">
+                    <span id="onlineDot" style="width:10px; height:10px; background:var(--success); border-radius:50%; box-shadow:0 0 10px var(--success)"></span>
+                    <span style="font-size:0.8rem; font-weight:700">ONLINE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: DASHBOARD -->
+        <div id="v-dash" class="view-content active">
+            <div class="stats-grid">
+                <div class="card" style="border-top: 4px solid var(--primary)">
+                    <div class="stat-icon" style="background:rgba(245,158,11,0.1); color:var(--primary)"><i data-lucide="users"></i></div>
+                    <div id="statTotal" class="stat-n">0</div>
+                    <div class="stat-l">Всего лидов</div>
+                </div>
+                <div class="card" style="border-top: 4px solid var(--accent)">
+                    <div class="stat-icon" style="background:rgba(56,189,248,0.1); color:var(--accent)"><i data-lucide="globe"></i></div>
+                    <div id="statSite" class="stat-n">0%</div>
+                    <div class="stat-l">Конверсия в сайт</div>
+                </div>
+                <div class="card" style="border-top: 4px solid var(--tg)">
+                    <div class="stat-icon" style="background:rgba(34,158,217,0.1); color:var(--tg)"><i data-lucide="message-circle"></i></div>
+                    <div id="statSocial" class="stat-n">0</div>
+                    <div class="stat-l">Соцсети найдены</div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="card" style="height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center">
+                    <h3 style="margin-bottom:1rem">Качество лидов (Рейтинг)</h3>
+                    <canvas id="ratingChart"></canvas>
+                </div>
+                <div class="card" style="height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center">
+                    <h3 style="margin-bottom:1rem">Наличие сайтов</h3>
+                    <canvas id="siteChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: SCRAPER FORM -->
+        <div id="v-scrape" class="view-content">
+            <div class="card" style="max-width: 900px; margin: 0 auto">
+                <h2 style="margin-bottom:2rem; display:flex; align-items:center; gap:10px"><i data-lucide="play-circle" style="color:var(--primary)"></i> Настройка сбора</h2>
+                
+                <div class="field">
+                    <div class="field-label"><i data-lucide="map-pin"></i> ГОРОД</div>
+                    <input type="text" id="in-city" value="Краснодар" placeholder="Например: Москва" oninput="suggest(this, 'city')">
+                    <div id="s-city" class="suggest-pop"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field">
+                        <div class="field-label"><i data-lucide="layers"></i> РАЙОНЫ (ОДИН В СТРОКУ)</div>
+                        <textarea id="in-districts" placeholder="Центральный&#10;Прикубанский&#10;Западный" oninput="suggest(this, 'district')"></textarea>
+                        <div id="s-district" class="suggest-pop"></div>
+                    </div>
+                    <div class="field">
+                        <div class="field-label"><i data-lucide="tag"></i> КАТЕГОРИИ (ОДНА В СТРОКУ)</div>
+                        <textarea id="in-categories" placeholder="Стоматология&#10;Фитнес-клуб&#10;Барбершоп" oninput="suggest(this, 'category')"></textarea>
+                        <div id="s-category" class="suggest-pop"></div>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:2rem">
+                    <div style="display:flex; gap:15px">
+                        <div class="input-group">
+                            <label>ЛИМИТ</label>
+                            <input type="number" id="in-limit" value="50" style="width:100px">
+                        </div>
+                        <div class="input-group">
+                            <label>СКОРОСТЬ</label>
+                            <select id="in-speed" style="width:150px">
+                                <option value="fast">RACING (x5)</option>
+                                <option value="medium" selected>NORMAL</option>
+                                <option value="slow">STEALTH</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="mainStartBtn" class="btn-main" onclick="startScrape()"><i data-lucide="zap"></i> ПОЕХАЛИ!</button>
+                        <button id="mainStopBtn" class="btn-main" style="background:var(--danger); color:white; display:none" onclick="stopScrape()"><i data-lucide="stop-circle"></i> ОСТАНОВИТЬ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: TABLE -->
+        <div id="v-table" class="view-content">
+            <div class="card" style="margin-bottom: 2rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap">
+                <div style="flex:1; display:flex; align-items:center; gap:1rem; background:rgba(0,0,0,0.2); padding:0.5rem 1rem; border-radius:12px">
+                    <i data-lucide="search" style="color:var(--text-muted)"></i>
+                    <input type="text" id="tabSearch" placeholder="Поиск в текущей выборке..." oninput="filterTable()" style="border:none; background:transparent; font-size:1rem">
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.2); padding:0.5rem 1rem; border-radius:12px">
+                    <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted)">СЕССИЯ:</label>
+                    <select id="sessionSelector" onchange="loadSessionData()" style="background:transparent; border:none; color:white; font-weight:700; cursor:pointer; min-width:200px">
+                        <option value="all">Все записи</option>
+                    </select>
+                    <button id="btnDeleteSession" onclick="deleteCurrentSession()" style="display:none; background:transparent; border:none; color:var(--danger); cursor:pointer" title="Удалить сессию">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+                <button onclick="downloadExcel()" class="btn" style="background:var(--primary); color:black; font-weight:800"><i data-lucide="download"></i> Excel</button>
+            </div>
+            <div class="table-area">
+                <table id="mainTable">
+                    <thead>
+                        <tr>
+                            <th>Организация</th>
+                            <th>Контакты</th>
+                            <th>Сайт</th>
+                            <th>Район</th>
+                            <th>Рейтинг</th>
+                            <th>Адрес</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW: LOGS -->
+        <div id="v-logs" class="view-content">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; margin-bottom:1rem; align-items:center">
+                    <h3>Терминал работы системы</h3>
+                    <div style="background:orange; color:black; padding:2px 10px; border-radius:5px; font-size:0.7rem; font-weight:900">3x PARALLEL MODE</div>
+                </div>
+                <div id="termBox" class="term-box"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- CAPTCHA OVERLAY -->
+    <div id="captchaOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:1000; align-items:center; justify-content:center; flex-direction:column">
+        <div style="text-align:center; background:var(--bg-card); padding:3rem; border-radius:30px; border:2px solid var(--danger)">
+            <i data-lucide="alert-octagon" style="width:60px; height:60px; color:var(--danger); margin-bottom:1rem"></i>
+            <h1 style="color:white; margin-bottom:1rem">ОБНАРУЖЕНА КАПЧА</h1>
+            <p style="color:var(--text-muted); margin-bottom:2rem">Пожалуйста, решите проверку подлинности в окне браузера.</p>
+            <button class="btn-main" onclick="solveCaptcha()" style="width:100%; justify-content:center">Я РЕШИЛ, ПРОДОЛЖАЕМ!</button>
+        </div>
+    </div>
+    <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+    <script>
+        let dashboardCharts = { rating: null, site: null };
+        let isScraping = false;
+        let logLineCount = 0;
+
+        function showView(id, el) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+        }
+
+        async function init() {
+            lucide.createIcons();
+            initCharts();
+            await loadSessions();
+            poll(); // Запуск динамического опроса
+        }
+
+        function initCharts() {
+            const rc = document.getElementById('ratingChart').getContext('2d');
+            dashboardCharts.rating = new Chart(rc, {
+                type: 'doughnut',
+                data: { labels: ['5.0', '4-4.9', '3-3.9', '<3', 'Нет'], datasets: [{ data: [0,0,0,0,0], backgroundColor: ['#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#64748b'] }] },
+                options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
+            });
+            const sc = document.getElementById('siteChart').getContext('2d');
+            dashboardCharts.site = new Chart(sc, {
+                type: 'pie',
+                data: { labels: ['Сайт', 'Только Соцсети', 'Ничего'], datasets: [{ data: [0,0,0], backgroundColor: ['#38bdf8', '#818cf8', '#ef4444'] }] },
+                options: { plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } } }
+            });
+        }
+
+        async function suggest(el, type) {
+            const list = document.getElementById('s-' + type);
+            
+            const lines = el.value.split('\n');
+            const currentQuery = lines[lines.length - 1].trim();
+            
+            if (currentQuery.length < 2) { list.style.display = 'none'; return; }
+            const res = await fetch(`/suggest?q=${encodeURIComponent(currentQuery)}&type=${type}`);
+            const data = await res.json();
+            if(!data.length) { list.style.display = 'none'; return; }
+            
+            list.innerHTML = data.map(m => {
+                const safeM = m.replace(/'/g, "\\'");
+                return `<div class="s-item" onclick="pickSuggest('${safeM}','in-${type}','s-${type}')">${m}</div>`
+            }).join('');
+            
+            list.style.display = 'block';
+        }
+        
+        function pickSuggest(val, inputId, listId) { 
+            const el = document.getElementById(inputId);
+            if (el.tagName.toLowerCase() === 'textarea') {
+                const lines = el.value.split('\n');
+                lines[lines.length - 1] = val;
+                el.value = lines.join('\n') + '\n';
+            } else {
+                el.value = val; 
+            }
+            document.getElementById(listId).style.display = 'none'; 
+            el.focus(); 
+        }
+
+        async function loadSessions() {
+            const res = await fetch('/sessions');
+            const data = await res.json();
+            const sel = document.getElementById('sessionSelector');
+            const currentSelected = sel.value; // Запоминаем текущий выбор
+            
+            sel.innerHTML = '<option value="all">Все записи в базе</option>' + data.map(s => 
+                `<option value="${s.id}">#${s.id} ${s.query} (${new Date(s.timestamp).toLocaleTimeString()})</option>`).join('');
+                
+            // Восстанавливаем выбор
+            if (currentSelected && Array.from(sel.options).some(o => o.value === currentSelected)) {
+                sel.value = currentSelected;
+            } else {
+                sel.value = 'all';
+            }
+            
+            loadSessionData();
+        }
+
+        async function loadSessionData() {
+            const sid = document.getElementById('sessionSelector').value;
+            const delBtn = document.getElementById('btnDeleteSession');
+            if (delBtn) delBtn.style.display = (sid === 'all') ? 'none' : 'inline-flex';
+            
+            const res = await fetch(`/results?session_id=${sid}`);
+            const data = await res.json();
+            renderTable(data.results);
+            updateStatsUI(data.results);
+        }
+
+        async function startScrape() {
+            const p = { 
+                city: document.getElementById('in-city').value,
+                districts: document.getElementById('in-districts').value,
+                categories: document.getElementById('in-categories').value,
+                limit: document.getElementById('in-limit').value,
+                speed: document.getElementById('in-speed').value
+            };
+            const r = await fetch('/start', {method:'POST', body:JSON.stringify(p), headers:{'Content-Type':'application/json'}});
+            const data = await r.json();
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            isScraping = true;
+            toggleScrapeBtns(true);
+            showView('v-logs', document.querySelector('[onclick*="v-logs"]'));
+            
+            // Сразу обновляем список сессий, чтобы увидеть новый сбор
+            setTimeout(loadSessions, 1000); 
+            
+            document.getElementById('realtimeSpeed').value = 1;
+            document.getElementById('speedVal').innerText = '1.0x';
+            document.getElementById('scrollSpeed').value = 900;
+            document.getElementById('scrollVal').innerText = '900px';
+            document.getElementById('mapSpeed').value = 1;
+            document.getElementById('mapSpeedVal').innerText = '1.0x';
+        }
+
+        async function updateRealtimeSpeed() {
+            const val = document.getElementById('realtimeSpeed').value;
+            document.getElementById('speedVal').innerText = Number(val).toFixed(1) + 'x';
+            await fetch('/set_speed', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({multiplier: val})
+            });
+        }
+        
+        async function updateScrollSpeed() {
+            const val = document.getElementById('scrollSpeed').value;
+            document.getElementById('scrollVal').innerText = val + 'px';
+            await fetch('/set_speed', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({scroll_amount: val})
+            });
+        }
+
+        async function updateMapSpeed() {
+            const val = document.getElementById('mapSpeed').value;
+            document.getElementById('mapSpeedVal').innerText = Number(val).toFixed(1) + 'x';
+            await fetch('/set_speed', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({map_speed: val})
+            });
+        }
+
+        let lastSessionLoad = 0;
+
+        async function poll() {
+            try {
+                const res = await fetch('/status');
+                const data = await res.json();
+                
+                const now = Date.now();
+                // Обновляем список сессий НЕ чаще чем раз в 15 секунд
+                if (now - lastSessionLoad > 15000) {
+                    await loadSessions();
+                    lastSessionLoad = now;
+                }
+                
+                // Обновление текста статуса в шапке
+                const stText = document.getElementById('currentStatusText');
+                if (data.running) {
+                    stText.innerText = "🚀 Идет активный сбор данных...";
+                    stText.style.color = "var(--primary)";
+                    isScraping = true;
+                    toggleScrapeBtns(true);
+                } else {
+                    stText.innerText = "Система готова к работе";
+                    stText.style.color = "var(--text-muted)";
+                    if (isScraping) { // Если только что закончил
+                        isScraping = false;
+                        toggleScrapeBtns(false);
+                        await loadSessions();
+                    }
+                }
+
+                // Логи
+                const box = document.getElementById('termBox');
+                if (data.logs.length > logLineCount) {
+                    let hasNewRecords = false;
+                    for (let i = logLineCount; i < data.logs.length; i++) {
+                        const l = document.createElement('div');
+                        l.className = 'term-line';
+                        l.innerText = data.logs[i];
+                        if (l.innerText.includes('🏁')) l.className += ' info';
+                        if (l.innerText.includes('✓')) {
+                            l.className += ' success';
+                            hasNewRecords = true;
+                        }
+                        box.appendChild(l);
+                    }
+                    box.scrollTop = box.scrollHeight;
+                    logLineCount = data.logs.length;
+                    
+                    if (hasNewRecords) {
+                        loadSessionData();
+                    }
+                }
+
+                if (data.captcha_wait) {
+                    document.getElementById('captchaOverlay').style.display = 'flex';
+                    document.getElementById('beep').play();
+                } else {
+                    document.getElementById('captchaOverlay').style.display = 'none';
+                }
+            } catch (e) {
+                console.error("Ошибка опроса:", e);
+            }
+            
+            // Динамический интервал: 1.5 сек при работе, 10 сек при простое
+            const nextInterval = isScraping ? 1500 : 10000;
+            setTimeout(poll, nextInterval);
+        }
+
+        function renderTable(rows) {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = rows.map(r => {
+                let socials = `<div class="social-links">`;
+                if (r.vk && r.vk !== 'Нет') socials += `<a href="${r.vk}" target="_blank" class="social-icon si-vk">VK</a>`;
+                if (r.telegram && r.telegram !== 'Нет') socials += `<a href="${r.telegram}" target="_blank" class="social-icon si-tg">TG</a>`;
+                if (r.whatsapp && r.whatsapp !== 'Нет') socials += `<a href="${r.whatsapp}" target="_blank" class="social-icon si-wa">WA</a>`;
+                socials += `</div>`;
+                
+                const site = (r.website && r.website !== 'Нет сайта') ? `<a href="${r.website}" target="_blank" style="color:var(--accent); text-decoration:none; font-weight:700">🌐 ПЕРЕЙТИ</a>` : '—';
+                const rat = parseFloat(r.rating) || 0;
+                
+                return `<tr>
+                    <td><b>${r.name}</b><br><small style="color:var(--text-muted)">${r.category}</small></td>
+                    <td>${r.phone}<br>${socials}</td>
+                    <td>${site}</td>
+                    <td><span style="color:var(--primary); font-weight:700">📍 ${r.district || '—'}</span></td>
+                    <td><span class="tag tag-rating">⭐ ${r.rating}</span></td>
+                    <td><small style="opacity:0.7">${r.address}</small></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateStatsUI(rows) {
+            document.getElementById('statTotal').innerText = rows.length;
+            const wSite = rows.filter(r => r.website && r.website !== 'Нет сайта').length;
+            document.getElementById('statSite').innerText = rows.length ? Math.round((wSite/rows.length)*100)+'%' : '0%';
+            const wSocial = rows.filter(r => (r.vk!=='Нет' || r.telegram!=='Нет')).length;
+            document.getElementById('statSocial').innerText = wSocial;
+
+            // Update Charts
+            const rData = [0,0,0,0,0]; // 5.0, 4-4.9, 3-3.9, <3, Нет
+            const sData = [0,0,0]; // Сайт, Лишь соц, Нет
+            rows.forEach(r => {
+                const rat = parseFloat(r.rating) || 0;
+                if (rat === 5.0) rData[0]++;
+                else if (rat >= 4.0) rData[1]++;
+                else if (rat >= 3.0) rData[2]++;
+                else if (rat > 0) rData[3]++;
+                else rData[4]++;
+
+                if (r.website && r.website !== 'Нет сайта') sData[0]++;
+                else if (r.vk!=='Нет' || r.telegram!=='Нет') sData[1]++;
+                else sData[2]++;
+            });
+            dashboardCharts.rating.data.datasets[0].data = rData;
+            dashboardCharts.rating.update();
+            dashboardCharts.site.data.datasets[0].data = sData;
+            dashboardCharts.site.update();
+        }
+
+        function toggleScrapeBtns(on) {
+            document.getElementById('mainStartBtn').style.display = on ? 'none' : 'flex';
+            document.getElementById('mainStopBtn').style.display = on ? 'flex' : 'none';
+            document.getElementById('speedControl').style.display = on ? 'flex' : 'none';
+        }
+
+        function filterTable() {
+            const val = document.getElementById('tabSearch').value.toLowerCase();
+            const rows = document.getElementById('tableBody').rows;
+            for (let r of rows) {
+                r.style.display = r.innerText.toLowerCase().includes(val) ? '' : 'none';
+            }
+        }
+
+        async function stopScrape() { await fetch('/stop', {method:'POST'}); }
+        async function solveCaptcha() { await fetch('/captcha_solved', {method:'POST'}); }
+        async function deleteCurrentSession() {
+            const sid = document.getElementById('sessionSelector').value;
+            if (sid === 'all') return;
+            if(confirm(`⚠️ Удалить выбранную сессию и все её лиды? Это действие необратимо!`)) { 
+                try {
+                    await fetch('/delete_session', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({session_id: sid})
+                    }); 
+                    await loadSessions(); 
+                } catch(e) { alert("Ошибка при удалении сессии"); }
+            }
+        }
+
+        async function clearAllData() { if(confirm('⚠️ ВНИМАНИЕ: Это удалит ВСЮ базу данных и все сессии навсегда. Продолжить?')) { await fetch('/clear_database', {method:'POST'}); location.reload(); } }
+        function downloadExcel() { window.location.href = `/download?session_id=${document.getElementById('sessionSelector').value}`; }
+
+        init();
+    </script>
+</body>
+</html>
